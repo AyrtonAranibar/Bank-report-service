@@ -12,8 +12,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.mockito.Mockito.*;
 
@@ -33,20 +32,30 @@ public class ReportServiceImplTest {
     @Test
     void testGetAverageDailyBalance() {
         ProductDto product1 = new ProductDto();
+        product1.setId("1");
         product1.setBalance(100.0);
-        ProductDto product2 = new ProductDto();
-        product2.setBalance(200.0);
+
+        MovementDto movement1 = new MovementDto();
+        movement1.setProductId("1");
+        movement1.setAmount(100.0);
+        movement1.setDate(LocalDateTime.now());
 
         when(productWebClient.get()
-                .uri(anyString(), Optional.ofNullable(any()))
+                .uri(anyString(), any(Object[].class))
                 .retrieve()
                 .bodyToFlux(ProductDto.class))
-                .thenReturn(Flux.just(product1, product2));
+                .thenReturn(Flux.just(product1));
+
+        when(movementWebClient.get()
+                .uri(anyString(), any(Object[].class))
+                .retrieve()
+                .bodyToFlux(MovementDto.class))
+                .thenReturn(Flux.just(movement1));
 
         Mono<Double> result = reportService.getAverageDailyBalance("dummyId");
 
         StepVerifier.create(result)
-                .expectNext(150.0)
+                .expectNext(100.0)
                 .verifyComplete();
     }
 
@@ -54,14 +63,16 @@ public class ReportServiceImplTest {
     void testGetCommissionReport() {
         MovementDto movement1 = new MovementDto();
         movement1.setProductId("dummyProduct");
+        movement1.setDate(LocalDateTime.now());
         movement1.setCommission(5.0);
 
         MovementDto movement2 = new MovementDto();
         movement2.setProductId("dummyProduct");
+        movement2.setDate(LocalDateTime.now());
         movement2.setCommission(10.0);
 
         when(movementWebClient.get()
-                .uri(anyString(), Optional.ofNullable(any()))
+                .uri(anyString(), any(Object[].class))
                 .retrieve()
                 .bodyToFlux(MovementDto.class))
                 .thenReturn(Flux.just(movement1, movement2));
