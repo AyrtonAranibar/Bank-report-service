@@ -26,4 +26,11 @@ public class WebClientConfig {
                 .baseUrl("http://localhost:8083") // URL del servicio movement
                 .build();
     }
+
+    @Bean
+    public WebClient debitCardWebClient() {
+        return WebClient.builder()
+                .baseUrl("http://product-service/api/v1/debit-card")
+                .build();
+    }
 }

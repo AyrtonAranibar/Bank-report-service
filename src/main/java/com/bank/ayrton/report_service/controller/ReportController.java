@@ -2,6 +2,8 @@ package com.bank.ayrton.report_service.controller;
 
 import com.bank.ayrton.report_service.dto.CommissionReportDto;
 import com.bank.ayrton.report_service.api.report.ReportService;
+import com.bank.ayrton.report_service.dto.ConsolidatedReportDto;
+import com.bank.ayrton.report_service.dto.MovementDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -30,5 +32,15 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return reportService.getCommissionReport(productId, startDate, endDate);
+    }
+
+    @GetMapping("/consolidated/{clientId}")
+    public Mono<ConsolidatedReportDto> getConsolidatedReport(@PathVariable String clientId) {
+        return reportService.getConsolidatedReport(clientId);
+    }
+
+    @GetMapping("/card/{cardId}/movements")
+    public Flux<MovementDto> getLast10CardMovements(@PathVariable String cardId) {
+        return reportService.getLast10CardMovements(cardId);
     }
 }

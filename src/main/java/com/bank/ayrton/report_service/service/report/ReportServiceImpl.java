@@ -1,9 +1,7 @@
 package com.bank.ayrton.report_service.service.report;
 
 import com.bank.ayrton.report_service.api.report.ReportService;
-import com.bank.ayrton.report_service.dto.CommissionReportDto;
-import com.bank.ayrton.report_service.dto.MovementDto;
-import com.bank.ayrton.report_service.dto.ProductDto;
+import com.bank.ayrton.report_service.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -15,8 +13,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -28,6 +25,7 @@ public class ReportServiceImpl implements ReportService {
     private final WebClient clientWebClient;
     private final WebClient productWebClient;
     private final WebClient movementWebClient;
+    private final WebClient debitCardWebClient;
 
     public Flux<Map<String, Double>> getAverageBalanceByClient(String clientId) {
         log.info("Generando reporte de saldo promedio diario para cliente: {}", clientId);
@@ -119,4 +117,59 @@ public class ReportServiceImpl implements ReportService {
                 })
                 .flux();
     }
+
+    @Override
+    public Mono<ConsolidatedReportDto> getConsolidatedReport(String clientId) {
+        Mono<ClientDto> clientMono = clientWebClient.get()
+                .uri("/api/v1/client/{id}", clientId)
+                .retrieve()
+                .bodyToMono(ClientDto.class);
+
+        Flux<ProductDto> productsFlux = productWebClient.get()
+                .uri("/api/v1/product/client/{clientId}", clientId)
+                .retrieve()
+                .bodyToFlux(ProductDto.class);
+
+        Flux<MovementDto> movementsFlux = movementWebClient.get()
+                .uri("/api/v1/movement/client/{clientId}", clientId)
+                .retrieve()
+                .bodyToFlux(MovementDto.class);
+
+        return Mono.zip(clientMono, productsFlux.collectList(), movementsFlux.collectList())
+                .map(tuple -> {
+                    ConsolidatedReportDto dto = new ConsolidatedReportDto();
+                    dto.setClient(tuple.getT1());
+                    dto.setProducts(tuple.getT2());
+                    dto.setMovements(tuple.getT3());
+                    return dto;
+                });
+    }
+
+    @Override
+    public Flux<MovementDto> getLast10CardMovements(String cardId) {
+        return debitCardWebClient.get()
+                .uri("/{id}", cardId)
+                .retrieve()
+                .bodyToMono(DebitCardDto.class)
+                .flatMapMany(card -> {
+                    List<String> accountIds = card.getLinkedAccountIds();
+
+                    List<Mono<List<MovementDto>>> movementsByAccount = accountIds.stream()
+                            .map(accountId ->
+                                    movementWebClient.get()
+                                            .uri("/product/{productId}", accountId)
+                                            .retrieve()
+                                            .bodyToFlux(MovementDto.class)
+                                            .collectList()
+                            )
+                            .toList();
+
+                    return Flux.merge(movementsByAccount)
+                            .flatMap(Flux::fromIterable)
+                            .sort((m1, m2) -> m2.getDate().compareTo(m1.getDate())) // orden descendente
+                            .take(10);
+                });
+    }
+
+
 }
