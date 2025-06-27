@@ -18,6 +18,8 @@ import static org.mockito.Mockito.*;
 
 public class ReportServiceImplTest {
 
+
+
     private WebClient productWebClient;
     private WebClient movementWebClient;
     private ReportServiceImpl reportService;
@@ -26,7 +28,7 @@ public class ReportServiceImplTest {
     void setUp() {
         productWebClient = mock(WebClient.class, RETURNS_DEEP_STUBS);
         movementWebClient = mock(WebClient.class, RETURNS_DEEP_STUBS);
-        reportService = new ReportServiceImpl(null, productWebClient, movementWebClient);
+        reportService = new ReportServiceImpl(null, productWebClient, movementWebClient, null);
     }
 
     @Test
